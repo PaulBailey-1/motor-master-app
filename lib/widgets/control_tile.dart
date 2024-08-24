@@ -1,4 +1,3 @@
-import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:motor_master/Output.dart';
@@ -62,15 +61,17 @@ class _ControlTileState extends State<ControlTile> {
 
   List<Widget> _buildControls(BuildContext context) {
     if (widget.output is PwmOutput) {
+      PwmOutput output = widget.output as PwmOutput;
       return [
-        Text("CMD: ${widget.output.cmd.round()}%"),
-        EvenSlider(widget.output.cmd, (double value) {
+        Text("CMD: ${output.cmd.round()}%"),
+        EvenSlider(output.cmd, (double value) {
           setState(() {
-            widget.output.setCmd(value.roundToDouble());
+            output.setCmd(value.roundToDouble());
           });
         })
       ];
     } else if (widget.output is CanOutput) {
+      CanOutput output = widget.output as CanOutput;
       return [
         const Padding(padding: EdgeInsets.only(top: 10)),
         ElevatedButton(
@@ -84,7 +85,7 @@ class _ControlTileState extends State<ControlTile> {
             child: CircularProgressIndicator(color: Colors.white,),
           ) : const Text("Scan for Devices"),
         ),
-        Text((widget.output as CanOutput).info),
+        ..._buildCanControls(output),
       ];
     }
     return [];
@@ -99,5 +100,20 @@ class _ControlTileState extends State<ControlTile> {
     setState(() {
       scanning = true;
     });
+  }
+
+  List<Widget> _buildCanControls(CanOutput output) {
+    List<Widget> widgets = [];
+    output.info.forEach((id, device) {
+      widgets.add(Text('Name: ${device.name}'));
+      widgets.add(Text('Id: $id'));
+      widgets.add(Text('CMD: ${output.getCmd(id)}'));
+      widgets.add(EvenSlider(output.getCmd(id), (double value) {
+          setState(() {
+            widget.output.setCmd(CanCommand(id, value));
+          });
+        }));
+    });
+    return widgets;
   }
 }

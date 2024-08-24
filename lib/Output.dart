@@ -1,4 +1,7 @@
 
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 
 abstract class Output {
@@ -72,9 +75,11 @@ class CanOutput extends Output {
 
   BluetoothCharacteristic? _infoCharacteristic;
 
-  String info = "";
+  Map<int, CanDevice> info = {};
 
-  CanOutput(super.name);
+  CanOutput(super.name) {
+    _cmd = {};
+  }
 
   void setInfoCharacteristic(BluetoothCharacteristic c) {
     _infoCharacteristic = c;
@@ -83,28 +88,67 @@ class CanOutput extends Output {
 
   Future<void> readInfo() async {
     List<int> bytes = await _infoCharacteristic!.read();
-    info = String.fromCharCodes(bytes);
-    print("Can info $info");
+    String jsonInfo = String.fromCharCodes(bytes);
+    jsonInfo = " [ { \"id\": 1, \"name\": \"drive_motor\" } ]";
+    print("CAN info $jsonInfo");
+    final devices = jsonDecode(jsonInfo) as List<dynamic>;
+
+    info.clear();
+    for (final device in devices) {
+      info[device['id']] = CanDevice(device['name']);
+    }
+    readCmd();
   }
 
   @override  
   Future<void> readCmd() async {
-    List<int> bytes = await _cmdCharacteristic!.read();
-    _cmd = String.fromCharCodes(bytes);
+    // List<int> bytes = await _cmdCharacteristic!.read();
+    _cmd.clear();
+    info.forEach((id, dev) {_cmd[id] = CanCommand(id, 0.0);});
   }
 
   @override 
   void setCmd(dynamic cmd) {
-    assert(cmd is String);
-    _cmd = cmd;
+    assert(cmd is CanCommand);
+    _cmd[cmd.id] = cmd;
     int time = DateTime.now().millisecondsSinceEpoch;
     if (time - _lastUpdateTime > 100) {
-      _cmdCharacteristic!.write(_cmd.codeUnits);
+      _cmdCharacteristic!.write(cmd.toBytes());
       _lastUpdateTime = time;
     }
+  }
+
+  double getCmd(int id) {
+    try {
+      return cmd[id].val;
+    } catch (e) {
+      print("Failed to get CanControl cmd for id $id - ${e.toString()}");
+    }
+    return 0.0;
   }
 
   @override
   bool available() {return _enabledCharacteristic != null && _cmdCharacteristic != null && _infoCharacteristic != null;}
 
+}
+
+class CanDevice {
+
+  String name;
+
+  CanDevice(this.name);
+}
+
+class CanCommand {
+  int id = -1;
+  double val = 0.0;
+
+  CanCommand(this.id, this.val);
+
+  List<int> toBytes() {
+    ByteData bytes = ByteData(4+4+8);
+    bytes.setInt32(0, id, Endian.little);
+    bytes.setFloat64(8, val, Endian.little);
+    return bytes.buffer.asUint8List();
+  }
 }
