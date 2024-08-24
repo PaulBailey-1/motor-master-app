@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:motor_master/Output.dart';
 import 'package:motor_master/widgets/even_slider.dart';
 
+const List<String> cmdModeLabels = ['Duty Cycle', 'Velocity'];
+const List<String> cmdModeUnits = ['%', 'RPM'];
+
 class ControlTile extends StatefulWidget {
   final Output output;
   bool? end = false;
@@ -107,10 +110,25 @@ class _ControlTileState extends State<ControlTile> {
     output.info.forEach((id, device) {
       widgets.add(Text('Name: ${device.name}'));
       widgets.add(Text('Id: $id'));
-      widgets.add(Text('CMD: ${output.getCmd(id)}'));
-      widgets.add(EvenSlider(output.getCmd(id), (double value) {
+      widgets.add(Text('CMD: ${output.getCmd(id).val} ${cmdModeUnits[output.getCmd(id).mode as int]}'));
+      widgets.add(DropdownMenu<CmdMode>(
+      initialSelection: output.getCmd(id).mode,
+      onSelected: (CmdMode? mode) {
+        setState(() {
+          CanCommand cmd = output.getCmd(id);
+          cmd.mode = mode!;
+          output.setCmd(cmd);
+        });
+      },
+      dropdownMenuEntries: CmdMode.values.map<DropdownMenuEntry<CmdMode>>((CmdMode value) {
+        return DropdownMenuEntry<CmdMode>(value: value, label: cmdModeLabels[value as int]);
+      }).toList(),
+    ));
+      widgets.add(EvenSlider(output.getCmd(id).val, (double value) {
           setState(() {
-            widget.output.setCmd(CanCommand(id, value));
+            CanCommand cmd = output.getCmd(id);
+            cmd.val = value;
+            output.setCmd(cmd);
           });
         }));
     });

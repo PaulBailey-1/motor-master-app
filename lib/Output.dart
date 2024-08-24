@@ -89,13 +89,13 @@ class CanOutput extends Output {
   Future<void> readInfo() async {
     List<int> bytes = await _infoCharacteristic!.read();
     String jsonInfo = String.fromCharCodes(bytes);
-    jsonInfo = " [ { \"id\": 1, \"name\": \"drive_motor\" } ]";
+    // jsonInfo = " [ { \"id\": 1, \"name\": \"drive_motor\" } ]"; // jsonDecode error to be worked out
     print("CAN info $jsonInfo");
     final devices = jsonDecode(jsonInfo) as List<dynamic>;
 
     info.clear();
     for (final device in devices) {
-      info[device['id']] = CanDevice(device['name']);
+      info[device['id']] = CanDevice.fromJson(device);
     }
     readCmd();
   }
@@ -104,7 +104,7 @@ class CanOutput extends Output {
   Future<void> readCmd() async {
     // List<int> bytes = await _cmdCharacteristic!.read();
     _cmd.clear();
-    info.forEach((id, dev) {_cmd[id] = CanCommand(id, 0.0);});
+    info.forEach((id, dev) {_cmd[id] = CanCommand(id, CmdMode.dutyCycle, 0.0);});
   }
 
   @override 
@@ -118,13 +118,13 @@ class CanOutput extends Output {
     }
   }
 
-  double getCmd(int id) {
+  CanCommand getCmd(int id) {
     try {
-      return cmd[id].val;
+      return cmd[id];
     } catch (e) {
       print("Failed to get CanControl cmd for id $id - ${e.toString()}");
     }
-    return 0.0;
+    return CanCommand(0, CmdMode.dutyCycle, 0.0);
   }
 
   @override
@@ -135,20 +135,34 @@ class CanOutput extends Output {
 class CanDevice {
 
   String name;
+  String type;
 
-  CanDevice(this.name);
+  CanDevice(this.name, this.type);
+
+  CanDevice.fromJson(json) :
+    name = json["name"],
+    type = json["type"];
+
 }
 
+enum CmdMode {
+  dutyCycle, 
+  velocity
+}
 class CanCommand {
+
   int id = -1;
   double val = 0.0;
+  CmdMode mode = CmdMode.dutyCycle;
 
-  CanCommand(this.id, this.val);
+  CanCommand(this.id, this.mode, this.val);
 
   List<int> toBytes() {
-    ByteData bytes = ByteData(4+4+8);
+    // Need to include space for c struct packing
+    ByteData bytes = ByteData(2 * (4 + 4) + 8);
     bytes.setInt32(0, id, Endian.little);
-    bytes.setFloat64(8, val, Endian.little);
+    bytes.setInt32(8, mode as int, Endian.little);
+    bytes.setFloat64(16, val, Endian.little);
     return bytes.buffer.asUint8List();
   }
 }
