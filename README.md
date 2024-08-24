@@ -1,16 +1,4 @@
-# motor_master
+# MotorMaster App
+This is the source for the accompanying app of the [motor master board](https://github.com/PaulBailey-1/motor-master/tree/main) for testing and prototyping with FRC motors.  
 
-A new Flutter project.
-
-## Getting Started
-
-This project is a starting point for a Flutter application.
-
-A few resources to get you started if this is your first Flutter project:
-
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+It should support both Android and iOS, but has only been built and tested for Android.
